@@ -1,105 +1,129 @@
 package dom
 
 import (
-	. "launchpad.net/gocheck"
+	"encoding/xml"
+	"strings"
 	"testing"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
-
-type DomSuite struct{}
-
-var _ = Suite(&DomSuite{})
-
-func (s *DomSuite) TestEmptyDocument(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	c.Assert(doc.String(), Equals, "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n")
+type tc struct {
+	name       string
+	creator    func() *Document
+	sample     string
+	nameSpaces map[string]string
 }
 
-func (s *DomSuite) TestOneEmptyNode(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	root := CreateElement("root")
-	doc.SetRoot(root)
-	c.Assert(doc.String(), Equals, "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<root/>\n")
-}
-
-func (s *DomSuite) TestMoreNodes(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	root := CreateElement("root")
-	node1 := CreateElement("node1")
-	root.AddChild(node1)
-	subnode := CreateElement("sub")
-	node1.AddChild(subnode)
-	node2 := CreateElement("node2")
-	root.AddChild(node2)
-	doc.SetRoot(root)
-	
-	expected := `<?xml version="1.0" encoding="utf-8" ?>
+var testCases = []tc{
+	tc{
+		name: "EmptyDoc",
+		creator: func() *Document {
+			return CreateDocument()
+		},
+		sample: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+	},
+	tc{
+		name: "OneEmptyNode",
+		creator: func() *Document {
+			doc := CreateDocument()
+			root := ElementN("root")
+			doc.SetRoot(root)
+			return doc
+		},
+		sample: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root/>\n",
+	},
+	tc{
+		name: "MoreNodes",
+		creator: func() *Document {
+			doc := CreateDocument()
+			root := ElementN("root")
+			node1 := ElementN("node1")
+			root.AddChild(node1)
+			subnode := ElementN("sub")
+			node1.AddChild(subnode)
+			node2 := ElementN("node2")
+			root.AddChild(node2)
+			doc.SetRoot(root)
+			return doc
+		},
+		sample: `<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <node1>
-    <sub/>
-  </node1>
-  <node2/>
+ <node1>
+  <sub/>
+ </node1>
+ <node2/>
 </root>
-`
-	
-	c.Assert(doc.String(), Equals, expected)
-}
-
-func (s *DomSuite) TestAttributes(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	root := CreateElement("root")
-	node1 := CreateElement("node1")
-	node1.SetAttr("attr1", "pouet")
-	root.AddChild(node1)
-	doc.SetRoot(root)
-	
-	expected := `<?xml version="1.0" encoding="utf-8" ?>
+`,
+	},
+	tc{
+		name: "WithAttribs",
+		creator: func() *Document {
+			doc := CreateDocument()
+			root := ElementN("root")
+			node1 := ElementN("node1")
+			node1.AddAttr(xml.Attr{Name: xml.Name{Local: "attr1"}, Value: "pouet"})
+			root.AddChild(node1)
+			doc.SetRoot(root)
+			return doc
+		},
+		sample: `<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <node1 attr1="pouet"/>
+ <node1 attr1="pouet"/>
 </root>
-`
-	c.Assert(doc.String(), Equals, expected)
-}
-
-func (s *DomSuite) TestContent(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	root := CreateElement("root")
-	node1 := CreateElement("node1")
-	node1.SetContent("this is a text content")
-	root.AddChild(node1)
-	doc.SetRoot(root)
-	
-	expected := `<?xml version="1.0" encoding="utf-8" ?>
+`,
+	},
+	tc{
+		name: "WithContent",
+		creator: func() *Document {
+			doc := CreateDocument()
+			root := ElementN("root")
+			node1 := ElementN("node1")
+			node1.Content = []byte("this is a text content")
+			root.AddChild(node1)
+			doc.SetRoot(root)
+			return doc
+		},
+		sample: `<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <node1>this is a text content</node1>
+ <node1>this is a text content</node1>
 </root>
-`
-	c.Assert(doc.String(), Equals, expected)
+`,
+	},
+	tc{
+		name: "WithNamespaces",
+		creator: func() *Document {
+			doc := CreateDocument()
+			ns := "http://schemas.xmlsoap.org/ws/2004/08/addressing"
+			root := ElementN("root")
+			node1 := ElementN("node1")
+			root.AddChild(node1)
+			node1.Name.Space = ns
+			node1.Content = []byte("this is a text content")
+			doc.SetRoot(root)
+			return doc
+		},
+		sample: `<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:ns0="http://schemas.xmlsoap.org/ws/2004/08/addressing">
+ <ns0:node1>this is a text content</ns0:node1>
+</root>
+`,
+	},
 }
 
-func (s *DomSuite) TestNamespace(c *C) {
-	doc := CreateDocument()
-	doc.PrettyPrint = true
-	root := CreateElement("root")
-	root.DeclareNamespace(Namespace { Prefix: "a", Uri: "http://schemas.xmlsoap.org/ws/2004/08/addressing"})
-	node1 := CreateElement("node1")
-	root.AddChild(node1)
-	node1.SetNamespace("a", "http://schemas.xmlsoap.org/ws/2004/08/addressing")
-	node1.SetContent("this is a text content")
-	doc.SetRoot(root)
-	
-	expected := `<?xml version="1.0" encoding="utf-8" ?>
-<root xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing">
-  <a:node1>this is a text content</a:node1>
-</root>
-`
-	c.Assert(doc.String(), Equals, expected)
+func TestCases(t *testing.T) {
+	for _, testCase := range testCases {
+		manualdoc := testCase.creator()
+		parsedoc, err := Parse(strings.NewReader(testCase.sample))
+		if err != nil {
+			t.Fatalf("Cannot parse testcase %s sample %s\n\nGot error %v",
+				testCase.name, testCase.sample, err)
+		}
+		if sample := manualdoc.String(); sample != testCase.sample {
+			t.Fatalf("Manually created DOM for %s did not render.\nExpected: %s\n\nGot: %s\n",
+				testCase.name, testCase.sample, sample)
+		}
+		if sample := parsedoc.String(); sample != testCase.sample {
+			t.Fatalf("Parsed DOM for %s did not render.\nExpected: %s\n\nGot: %s\n",
+				testCase.name, testCase.sample, sample)
+		}
+	}
 }
-

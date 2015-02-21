@@ -1,43 +1,53 @@
 package dom
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
-	"bytes"
+	"log"
 )
 
-type Attr struct {
-	Name  xml.Name // Attribute namespace and name.
-	Value string   // Attribute value.
-}
-
+// Element represents a node in an XML document.
+// Elements are arranged in a tree which corresponds to
+// the structure of the XML documents.
 type Element struct {
-	name xml.Name
+	Name     xml.Name
 	children []*Element
-	parent *Element
-	content string
-	attributes []*Attr
-	namespaces []*Namespace
-	document *Document
+	parent   *Element
+	// Unlike a full-fledged XML DOM, we only have a single Content field
+	// instead of representing Text nodes seperately.  We do not at present
+	// support CDATA.
+	Content    []byte
+	Attributes []xml.Attr
 }
 
-func CreateElement(n string) *Element {
-	element := &Element { name: xml.Name { Local: n } }
+// CreateElement creates a new element with the passed-in xml.Name.
+func CreateElement(n xml.Name) *Element {
+	element := &Element{Name: n}
 	element.children = make([]*Element, 0, 5)
-	element.attributes = make([]*Attr, 0, 10)
-	element.namespaces  = make([]*Namespace, 0, 10)
+	element.Attributes = make([]xml.Attr, 0, 10)
 	return element
 }
 
-func (node *Element) AddChild(child *Element) *Element {
+// ElementN creates a new Element with a simple name.  The
+// element will not be in a namespace until
+// you put it in one by adding it to element.Name.Space.
+func ElementN(n string) *Element {
+	return CreateElement(xml.Name{Local: n})
+}
+
+// AddChild adds a new child element to this element.
+// The child will be reparented if needed.
+func (node *Element) AddChild(child *Element) {
 	if child.parent != nil {
 		child.parent.RemoveChild(child)
 	}
-	child.SetParent(node)
+	child.parent = node
 	node.children = append(node.children, child)
-	return node
 }
 
+// RemoveChild removes a child from this node.  The removed child
+// will be returned.
 func (node *Element) RemoveChild(child *Element) *Element {
 	p := -1
 	for i, v := range node.children {
@@ -54,147 +64,148 @@ func (node *Element) RemoveChild(child *Element) *Element {
 	copy(node.children[p:], node.children[p+1:])
 	node.children = node.children[0 : len(node.children)-1]
 	child.parent = nil
-	return node
+	return child
 }
 
-func (node *Element) SetAttr(name string, value string) *Element {
-	// namespaces?
-	attr := &Attr{ Name: xml.Name { Local: name }, Value: value }
-	node.attributes = append(node.attributes, attr)
-	return node
+// Children returns all the children of the current node.
+func (node *Element) Children() (res []*Element) {
+	res = make([]*Element, 0, len(node.children))
+	copy(res, node.children)
+	return res
 }
 
+// Parent returns the parent of this node.
+func (node *Element) Parent() *Element {
+	return node.parent
+}
+
+// AddAttr adds a new attribute to this node.
+// No checks are done to exclude duplicates to redefinition.
+func (node *Element) AddAttr(attr xml.Attr) {
+	node.Attributes = append(node.Attributes, attr)
+}
+
+// SetParent sets the new parent node for this node.
 func (node *Element) SetParent(parent *Element) *Element {
-	node.parent = parent
-	return node
-} 
-
-func (node *Element) SetContent(content string) *Element {
-	node.content = content
-	return node
-} 
-
-// Add a namespace declaration to this node
-func (node *Element) DeclareNamespace(ns Namespace) *Element {
-	// check if we already have it
-	prefix := node.namespacePrefix(ns.Uri)
-	if  prefix == ns.Prefix {
-		return node
-	}
-	// add it
-	node.namespaces = append(node.namespaces, &ns)
+	parent.AddChild(node)
 	return node
 }
 
-func (node *Element) DeclaredNamespaces() []*Namespace {
-	return node.namespaces
+func (node *Element) addNamespaces(encoder *Encoder) {
+	// See if any of our attribs are in the xmlns namespace.
+	// If they are, try to add them with their prefix
+	for _, a := range node.Attributes {
+		if a.Name.Space == "xmlns" {
+			encoder.addNamespace(a.Value, a.Name.Local)
+		}
+	}
+
+	encoder.addNamespace(node.Name.Space, "")
+	for _, a := range node.Attributes {
+		encoder.addNamespace(a.Name.Space, "")
+	}
+	for _, c := range node.children {
+		c.addNamespaces(encoder)
+	}
 }
 
-func (node *Element) SetNamespace(prefix string, uri string) {
-	resolved := node.namespacePrefix(uri)
-	if resolved == "" {
-		// we couldn't find the namespace, let's declare it at this node
-		node.namespaces = append(node.namespaces, &Namespace { Prefix: prefix, Uri: uri })
+func namespacedName(e *Encoder, name xml.Name) string {
+	if name.Space == "" {
+		return name.Local
 	}
-	node.name.Space = uri
+	if name.Space == "xmlns" {
+		return name.Space + ":" + name.Local
+	}
+	prefix, found := e.nsURLMap[name.Space]
+	if !found {
+		log.Panicf("No prefix found in %v for namespace %s", e.nsURLMap, name.Space)
+	}
+	return prefix + ":" + name.Local
 }
 
-func (node *Element) Bytes(out *bytes.Buffer, indent bool, indentType string, level int) {
-	empty := len(node.children) == 0 && node.content == ""
-	content := node.content != ""
-//	children := len(node.children) > 0
-//	ns := len(node.namespaces) > 0
-//	attrs := len(node.attributes) > 0
-	
-	indentStr := ""
-	nextLine := ""
-	if indent {
-		nextLine = "\n"
-		for i := 0; i < level; i++ {
-	    	indentStr += indentType
+// Encode encodes an element using the passed-in Encoder.
+func (node *Element) Encode(e *Encoder) (err error) {
+	// This could use some refactoring. but it works Well Enough(tm)
+	writeNamespaces := !e.started
+	if writeNamespaces {
+		node.addNamespaces(e)
+		e.started = true
+	}
+	err = e.spaces()
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(e, "<%s", namespacedName(e, node.Name))
+	if err != nil {
+		return err
+	}
+	for _, a := range node.Attributes {
+		if a.Name.Space == "xmlns" {
+			continue
+		}
+		_, err = fmt.Fprintf(e, " %s=\"%s\"", namespacedName(e, a.Name), a.Value)
+		if err != nil {
+			return err
 		}
 	}
-	
-	if node.name.Local != "" {
-		if len(node.name.Space) > 0 {
-			// first find if ns has been declared, otherwise
-			prefix := node.namespacePrefix(node.name.Space)
-			fmt.Fprintf(out, "%s<%s:%s", indentStr, prefix, node.name.Local)
-		} else {
-			fmt.Fprintf(out, "%s<%s", indentStr, node.name.Local)
+	if writeNamespaces {
+		for prefix, uri := range e.nsPrefixMap {
+			_, err = fmt.Fprintf(e, " xmlns:%s=\"%s\"", prefix, uri)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	
-	// declared namespaces
-	for _, v := range node.namespaces {
-		prefix := node.namespacePrefix(v.Uri)
-		fmt.Fprintf(out, ` xmlns:%s="%s"`, prefix, v.Uri)
-	}
-
-	// attributes
-	for _, v := range node.attributes {
-		if len(v.Name.Space) > 0 {
-			prefix := node.namespacePrefix(v.Name.Space)
-			fmt.Fprintf(out, ` %s:%s="%s"`, prefix, v.Name.Local, v.Value)
-		} else {
-			fmt.Fprintf(out, ` %s="%s"`, v.Name.Local, v.Value)
+	if len(node.children) == 0 && len(node.Content) == 0 {
+		ctag := "/>"
+		if e.pretty {
+			ctag = "/>\n"
 		}
-	}
-	
-	// close tag
-	if empty {
-		fmt.Fprintf(out, "/>%s", nextLine)
-	} else {
-		if content {
-			out.WriteRune('>')
-		} else {
-			fmt.Fprintf(out, ">%s", nextLine)			
+		_, err = e.WriteString(ctag)
+		if err != nil {
+			return err
 		}
+		return
 	}
-	
+	_, err = e.WriteString(">")
+	if len(node.Content) > 0 {
+		xml.EscapeText(e, node.Content)
+	}
 	if len(node.children) > 0 {
-		for _, child := range node.children {
-			child.Bytes(out, indent, indentType, level + 1)
+		e.depth++
+		if err = e.prettyEnd(); err != nil {
+			return err
 		}
-	} else if node.content != "" {
-		//val := []byte(node.content)
-		//xml.EscapeText(out, val)
-		out.WriteString(node.content)
-	}
-	
-	if !empty && len(node.name.Local) > 0 {
-		var indentation string
-		if content {
-			indentation = ""
-		} else {
-			indentation = indentStr
+		for _, c := range node.children {
+			if err = c.Encode(e); err != nil {
+				return err
+			}
 		}
-		if len(node.name.Space) > 0 {
-			prefix := node.namespacePrefix(node.name.Space)
-			fmt.Fprintf(out, "%s</%s:%s>\n", indentation, prefix, node.name.Local)
-		} else {
-			fmt.Fprintf(out, "%s</%s>\n", indentation, node.name.Local)
+		e.depth--
+		if err = e.spaces(); err != nil {
+			return err
 		}
 	}
+	_, err = fmt.Fprintf(e, "</%s>", namespacedName(e, node.Name))
+	if err != nil {
+		return err
+	}
+	return e.prettyEnd()
 }
 
-// Finds the prefix of the given namespace if it has been declared
-// in this node or in one of its parent
-func (node *Element) namespacePrefix(uri string) string {
-	for _, ns := range node.namespaces {
-		if ns.Uri == uri {
-			return ns.Prefix
-		}
-	}
-	if node.parent == nil {
-		return ""
-	}
-	return node.parent.namespacePrefix(uri)
-}
-
-
-func (node *Element) String() string {
+// Bytes returns a pretty-printed XML encoding of this part of the tree.
+// The return is a byte array.
+func (node *Element) Bytes() []byte {
 	var b bytes.Buffer
-	node.Bytes(&b, false, "", 0)
-	return string(b.Bytes())
+	encoder := NewEncoder(&b)
+	encoder.Pretty()
+	node.Encode(encoder)
+	encoder.Flush()
+	return b.Bytes()
+}
+
+// String returns a pretty-printed XML encoding of this part of the tree.
+//  The return is a string.
+func (node *Element) String() string {
+	return string(node.Bytes())
 }
