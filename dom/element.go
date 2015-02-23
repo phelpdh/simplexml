@@ -70,13 +70,43 @@ func (node *Element) RemoveChild(child *Element) *Element {
 // Children returns all the children of the current node.
 func (node *Element) Children() (res []*Element) {
 	res = make([]*Element, 0, len(node.children))
-	copy(res, node.children)
+	return append(res, node.children...)
+}
+
+// Descendants returns all descendants of this element in breadth order
+func (node *Element) Descendants() (res []*Element) {
+	res = make([]*Element, 0, len(node.children))
+	toProcess := node.Children()
+	for len(toProcess) > 0 {
+		nextToProcess := make([]*Element, 0, len(node.children))
+		for _, n := range toProcess {
+			nextToProcess = append(nextToProcess, n.Children()...)
+		}
+		res = append(res, toProcess...)
+		toProcess = nextToProcess
+	}
 	return res
+}
+
+// All returns ourselves + all our descendants
+func (node *Element) All() ([]*Element) {
+	return append([]*Element{node},node.Descendants()...)
 }
 
 // Parent returns the parent of this node.
 func (node *Element) Parent() *Element {
 	return node.parent
+}
+
+// Ancestors returns all the ancestors of this node.
+func (node *Element) Ancestors() (res []*Element) {
+	res = make([]*Element, 0, 1)
+	t := node.parent
+	for t != nil {
+		res = append(res, t)
+		t = t.parent
+	}
+	return res
 }
 
 // AddAttr adds a new attribute to this node.
