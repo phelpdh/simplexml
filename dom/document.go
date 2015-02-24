@@ -49,9 +49,17 @@ func (doc *Document) Bytes() []byte {
 	b := bytes.Buffer{}
 	encoder := NewEncoder(&b)
 	encoder.Pretty()
+	// since we are encoding to a bytes.Buffer, assume
+	// Encode never fails.
 	doc.Encode(encoder)
 	encoder.Flush()
 	return b.Bytes()
+}
+
+// Reader returns a bytes.Reader that can be used wherever
+// something wants to consume this document via io.Reader
+func (doc *Document) Reader() *bytes.Reader {
+	return bytes.NewReader(doc.Bytes())
 }
 
 // String returns the result of stringifying the byte array that Bytes returns.
