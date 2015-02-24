@@ -30,7 +30,7 @@ func (doc *Document) SetRoot(node *Element) {
 // Encode encodes the entire Document using the passed-in Encoder.
 // The output is a well-formed XML document.
 func (doc *Document) Encode(e *Encoder) (err error) {
-	_, err = e.WriteString("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+	_,err = e.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 	if err != nil {
 		return err
 	}
