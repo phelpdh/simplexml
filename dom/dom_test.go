@@ -19,7 +19,7 @@ var testCases = []tc{
 		creator: func() *Document {
 			return CreateDocument()
 		},
-		sample: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+		sample: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
 	},
 	tc{
 		name: "OneEmptyNode",
@@ -29,7 +29,7 @@ var testCases = []tc{
 			doc.SetRoot(root)
 			return doc
 		},
-		sample: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root/>\n",
+		sample: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root/>\n",
 	},
 	tc{
 		name: "MoreNodes",
@@ -45,7 +45,7 @@ var testCases = []tc{
 			doc.SetRoot(root)
 			return doc
 		},
-		sample: `<?xml version="1.0" encoding="utf-8"?>
+		sample: `<?xml version="1.0" encoding="UTF-8"?>
 <root>
  <node1>
   <sub/>
@@ -65,7 +65,7 @@ var testCases = []tc{
 			doc.SetRoot(root)
 			return doc
 		},
-		sample: `<?xml version="1.0" encoding="utf-8"?>
+		sample: `<?xml version="1.0" encoding="UTF-8"?>
 <root>
  <node1 attr1="pouet"/>
 </root>
@@ -82,7 +82,7 @@ var testCases = []tc{
 			doc.SetRoot(root)
 			return doc
 		},
-		sample: `<?xml version="1.0" encoding="utf-8"?>
+		sample: `<?xml version="1.0" encoding="UTF-8"?>
 <root>
  <node1>this is a text content</node1>
 </root>
@@ -101,7 +101,7 @@ var testCases = []tc{
 			doc.SetRoot(root)
 			return doc
 		},
-		sample: `<?xml version="1.0" encoding="utf-8"?>
+		sample: `<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:ns0="http://schemas.xmlsoap.org/ws/2004/08/addressing">
  <ns0:node1>this is a text content</ns0:node1>
 </root>

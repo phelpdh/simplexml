@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var testDoc string = `<?xml version="1.0" encoding="utf-8"?>
+var testDoc string = `<?xml version="1.0" encoding="UTF-8"?>
 <a:root idx="0" xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing">
  <node1 foo="bar" idx="1">
   <sub idx="4"/>
