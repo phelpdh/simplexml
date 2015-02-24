@@ -58,7 +58,7 @@ func (node *Element) RemoveChild(child *Element) *Element {
 	}
 
 	if p == -1 {
-		return node
+		return nil
 	}
 
 	copy(node.children[p:], node.children[p+1:])
