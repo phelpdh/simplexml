@@ -46,6 +46,14 @@ func (node *Element) AddChild(child *Element) {
 	node.children = append(node.children, child)
 }
 
+// AddChildren will add several new children to the node.
+// The children will be reparented as needed.
+func (node *Element) AddChildren(children ...*Element) {
+	for _,c := range children {
+		node.AddChild(c)
+	}
+}
+
 // RemoveChild removes a child from this node.  The removed child
 // will be returned.
 func (node *Element) RemoveChild(child *Element) *Element {
