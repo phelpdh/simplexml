@@ -26,7 +26,7 @@ func And(funcs ...Match) Match {
 }
 
 // Or takes any number of Match, and returns another Match
-// that will match of any of the passed Match functions match.
+// that will match if any of the passed Match functions match.
 func Or(funcs ...Match) Match {
 	return func(e *dom.Element) bool {
 		for _, fn := range funcs {
@@ -44,6 +44,63 @@ func Not(fn Match) Match {
 	return func(e *dom.Element) bool {
 		return !fn(e)
 	}
+}
+
+// NoParent returns a matcher that matches iff the element
+// does not have a parent
+func NoParent() Match {
+	return func(e *dom.Element) bool {
+		return e.Parent() == nil
+	}
+}
+
+// Ancestor returns a matcher that matches iff the element has an
+// ancestor that matches the passed matcher
+func Ancestor(fn Match) Match {
+	return func(e *dom.Element) bool {
+		return First(fn, e.Ancestors()) != nil
+	}
+}
+
+// AncestorN returns a matcher that matches against the
+// nth ancestor of the node being tested.
+// If n == 0, then the node itself will be tested as a degenerate case.
+// If there is no such ancestor the match fails.
+func AncestorN(fn Match, distance uint) Match {
+	return func(e *dom.Element) bool {
+		if distance == 0 {
+			return fn(e)
+		}
+		ancestors := e.Ancestors()
+		if len(ancestors) < int(distance) {
+			return false
+		}
+		return fn(ancestors[distance-1])
+	}
+}
+
+// Parent returns a matcher that matches iff the element
+// has a parent and that parent matches the passed fn.
+func Parent(fn Match) Match {
+	return func(e *dom.Element) bool {
+		p := e.Parent()
+		if p == nil {
+			return false
+		}
+		return fn(p)
+	}
+}
+
+// Always returns a matcher that always matches
+func Always() Match {
+	return func(e *dom.Element) bool {
+		return true
+	}
+}
+
+//Never returns a matcher that never matches
+func Never() Match {
+	return Not(Always())
 }
 
 // All returns all the nodes that fn matches
@@ -74,13 +131,8 @@ func First(fn Match, nodes []*dom.Element) *dom.Element {
 // Return is a Match.
 func Tag(name, space string) Match {
 	return func(e *dom.Element) bool {
-		if space != "*" && space != e.Name.Space {
-			return false
-		}
-		if name != "*" && name != e.Name.Local {
-			return false
-		}
-		return true
+		return (space == "*" || space == e.Name.Space) &&
+			(name == "*" || name == e.Name.Local)
 	}
 }
 
@@ -90,13 +142,8 @@ func Tag(name, space string) Match {
 // Return is a Match
 func TagRE(name, space *regexp.Regexp) Match {
 	return func(e *dom.Element) bool {
-		if space != nil && !space.MatchString(e.Name.Space) {
-			return false
-		}
-		if name != nil && name.MatchString(e.Name.Local) {
-			return false
-		}
-		return true
+		return (space == nil || space.MatchString(e.Name.Space)) &&
+			(name == nil || name.MatchString(e.Name.Local))
 	}
 }
 
