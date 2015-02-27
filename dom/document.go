@@ -30,7 +30,7 @@ func (doc *Document) SetRoot(node *Element) {
 // Encode encodes the entire Document using the passed-in Encoder.
 // The output is a well-formed XML document.
 func (doc *Document) Encode(e *Encoder) (err error) {
-	_,err = e.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+	_, err = e.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 	if err != nil {
 		return err
 	}
@@ -58,6 +58,9 @@ func (doc *Document) Bytes() []byte {
 
 // Reader returns a bytes.Reader that can be used wherever
 // something wants to consume this document via io.Reader
+// This would be implemented using io.Pipe() for some nice
+// streaming reads, but that does not play nice for some reason
+// when using the returned Reader as an http.Request.Body
 func (doc *Document) Reader() *bytes.Reader {
 	return bytes.NewReader(doc.Bytes())
 }

@@ -49,7 +49,7 @@ func (node *Element) AddChild(child *Element) {
 // AddChildren will add several new children to the node.
 // The children will be reparented as needed.
 func (node *Element) AddChildren(children ...*Element) {
-	for _,c := range children {
+	for _, c := range children {
 		node.AddChild(c)
 	}
 }
@@ -97,8 +97,8 @@ func (node *Element) Descendants() (res []*Element) {
 }
 
 // All returns ourselves + all our descendants
-func (node *Element) All() ([]*Element) {
-	return append([]*Element{node},node.Descendants()...)
+func (node *Element) All() []*Element {
+	return append([]*Element{node}, node.Descendants()...)
 }
 
 // Parent returns the parent of this node.
