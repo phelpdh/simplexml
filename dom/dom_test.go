@@ -2,10 +2,10 @@ package dom
 
 import (
 	"encoding/xml"
-	"log"
-	"strconv"
 	"strings"
+	"strconv"
 	"testing"
+	"log"
 )
 
 type tc struct {
@@ -42,7 +42,7 @@ var testCases = []tc{
 			subnode := ElementN("sub")
 			node1.AddChild(subnode)
 			node2 := ElementN("node2")
-			root.AddChildren(node1, node2)
+			root.AddChildren(node1,node2)
 			doc.SetRoot(root)
 			return doc
 		},
@@ -128,14 +128,35 @@ func TestParsing(t *testing.T) {
 		}
 		autoparse, err := Parse(parsedoc.Reader())
 		if err != nil {
-			t.Errorf("Parsing new docuemnt from a document.Reader() failed: %v", err)
+			t.Errorf("Parsing new docuemnt from a document.Reader() failed: %v",err)
 		}
 		s1 := autoparse.String()
 		s2 := parsedoc.String()
 		if s1 != s2 {
-			t.Errorf("Expected copy of DOM to be the same, but there are differences:\nExpected:%s\n\nGot: %s\n", s1, s2)
+			t.Errorf("Expected copy of DOM to be the same, but there are differences:\nExpected:%s\n\nGot: %s\n",s1,s2)
 		}
+		
+	}
+}
 
+func TestMalformedEarlyParse(t *testing.T) {
+	_,err := Parse(strings.NewReader(`<?xml version="1.0" encoding="UTF-8"?><root`))
+	if err == nil {
+		t.Errorf("No parse error, expected one")
+	}
+}
+
+func TestMalformedMiddleParse(t *testing.T) {
+	_,err := Parse(strings.NewReader(`<?xml version="1.0" encoding="UTF-8"?><root><chil`))
+	if err == nil {
+		t.Errorf("No parse error, expected one")
+	}
+}
+
+func TestMalformedEndParse(t *testing.T) {
+	_,err := Parse(strings.NewReader(`<?xml version="1.0" encoding="UTF-8"?><root></roo`))
+	if err == nil {
+		t.Errorf("No parse error, expected one")
 	}
 }
 
@@ -175,6 +196,7 @@ func TestMoveChild(t *testing.T) {
 	}
 }
 
+
 func TestElementRetrivalOrder(t *testing.T) {
 	doc := parseDoc()
 	res := doc.Root().All()
@@ -209,11 +231,11 @@ func TestAncestorOrder(t *testing.T) {
 	sub := node1.Children()[0]
 	// Test the Parent() method while we are at it.
 	if subParent := sub.Parent(); subParent != node1 {
-		t.Errorf("sub should have %v as its parent, not %v", node1.Name, subParent.Name)
+		t.Errorf("sub should have %v as its parent, not %v",node1.Name,subParent.Name)
 	}
 	ancestors := sub.Ancestors()
 	if len(ancestors) != 2 {
-		t.Errorf("sub should have 2 ancestors, not %d", len(ancestors))
+		t.Errorf("sub should have 2 ancestors, not %d",len(ancestors))
 	}
 	if ancestors[0] != node1 {
 		t.Errorf("sub should have %v as its first ancestor, not %v",
@@ -225,10 +247,11 @@ func TestAncestorOrder(t *testing.T) {
 	}
 }
 
+
 func TestElementString(t *testing.T) {
 	refString := "<foo/>\n"
 	refElement := ElementN("foo")
 	if res := refElement.String(); res != refString {
-		t.Errorf("Expected stringification of reference to be '%s', not '%s'", refString, res)
+		t.Errorf("Expected stringification of reference to be '%s', not '%s'",refString, res)
 	}
 }
