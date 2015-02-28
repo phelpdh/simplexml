@@ -36,6 +36,10 @@ func ElementN(n string) *Element {
 	return CreateElement(xml.Name{Local: n})
 }
 
+func Elem(n,s string) *Element {
+	return CreateElement(xml.Name{Space: s, Local: n})
+}
+
 // AddChild adds a new child element to this element.
 // The child will be reparented if needed.
 func (node *Element) AddChild(child *Element) {
