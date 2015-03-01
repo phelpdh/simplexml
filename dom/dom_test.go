@@ -71,8 +71,7 @@ var testCases = []tc{
 		creator: func() *Document {
 			doc := CreateDocument()
 			root := Elem("root", "")
-			node1 := Elem("node1", "")
-			node1.Content = []byte("this is a text content")
+			node1 := ElemC("node1", "","this is a text content")
 			root.AddChild(node1)
 			doc.SetRoot(root)
 			return doc
