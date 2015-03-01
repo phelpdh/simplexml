@@ -15,51 +15,70 @@ type Element struct {
 	children []*Element
 	parent   *Element
 	// Unlike a full-fledged XML DOM, we only have a single Content field
-	// instead of representing Text nodes seperately.  We do not at present
-	// support CDATA.
+	// instead of representing Text nodes seperately.
 	Content    []byte
 	Attributes []xml.Attr
 }
 
 // CreateElement creates a new element with the passed-in xml.Name.
+// The created Element has no parent, no children, no content, and no
+// attributes.
 func CreateElement(n xml.Name) *Element {
-	element := &Element{Name: n}
-	element.children = make([]*Element, 0, 5)
-	element.Attributes = make([]xml.Attr, 0, 10)
-	return element
+	return &Element{
+		Name:       n,
+		children:   []*Element{},
+		Attributes: []xml.Attr{},
+	}
 }
 
-// ElementN creates a new Element with a simple name.  The
-// element will not be in a namespace until
-// you put it in one by adding it to element.Name.Space.
-func ElementN(n string) *Element {
-	return CreateElement(xml.Name{Local: n})
+// Attr creates a new xml.Attr.  It is exactly equivalent to creating a new
+// xml.Attr with:
+//    xml.Attr{
+//        Name: xml.Name{
+//            Local: name,
+//            Space: space,
+//        },
+//        Value: value,
+//    }
+func Attr(name, space, value string) xml.Attr {
+	return xml.Attr{
+		Name:  xml.Name{Space: space, Local: name},
+		Value: value,
+	}
 }
 
-func Elem(n,s string) *Element {
-	return CreateElement(xml.Name{Space: s, Local: n})
+// Elem creates a new Element.  It is equivalent to creating a new
+// Element with:
+//    CreateElement(xml.Name{Local: name, Space: space})
+func Elem(name, space string) *Element {
+	return CreateElement(xml.Name{Space: space, Local: name})
 }
 
-// AddChild adds a new child element to this element.
-// The child will be reparented if needed.
-func (node *Element) AddChild(child *Element) {
+// AddChild adds child to node.
+// child will be reparented if needed.
+// The return value is node.
+func (node *Element) AddChild(child *Element) *Element {
 	if child.parent != nil {
 		child.parent.RemoveChild(child)
 	}
 	child.parent = node
 	node.children = append(node.children, child)
+	return node
 }
 
-// AddChildren will add several new children to the node.
+// AddChildren adds children to node.
 // The children will be reparented as needed.
-func (node *Element) AddChildren(children ...*Element) {
+// The return value is node.
+func (node *Element) AddChildren(children ...*Element) *Element {
 	for _, c := range children {
 		node.AddChild(c)
 	}
+	return node
 }
 
-// RemoveChild removes a child from this node.  The removed child
-// will be returned.
+// RemoveChild removes child from node.  The removed child
+// will be returned if it was actually a child of node, otherwise
+// nil will be returned.
 func (node *Element) RemoveChild(child *Element) *Element {
 	p := -1
 	for i, v := range node.children {
@@ -79,13 +98,13 @@ func (node *Element) RemoveChild(child *Element) *Element {
 	return child
 }
 
-// Children returns all the children of the current node.
+// Children returns all the children of node.
 func (node *Element) Children() (res []*Element) {
 	res = make([]*Element, 0, len(node.children))
 	return append(res, node.children...)
 }
 
-// Descendants returns all descendants of this element in breadth order
+// Descendants returns all descendants of node in breadth order.
 func (node *Element) Descendants() (res []*Element) {
 	res = make([]*Element, 0, len(node.children))
 	toProcess := node.Children()
@@ -100,17 +119,18 @@ func (node *Element) Descendants() (res []*Element) {
 	return res
 }
 
-// All returns ourselves + all our descendants
+// All returns node + node.Descendants()
 func (node *Element) All() []*Element {
 	return append([]*Element{node}, node.Descendants()...)
 }
 
-// Parent returns the parent of this node.
+// Parent returns the parent of this node. If there is no parent, returns nil.
 func (node *Element) Parent() *Element {
 	return node.parent
 }
 
-// Ancestors returns all the ancestors of this node.
+// Ancestors returns all the ancestors of this node with the most distant
+// ancestor last.
 func (node *Element) Ancestors() (res []*Element) {
 	res = make([]*Element, 0, 1)
 	t := node.parent
@@ -121,13 +141,38 @@ func (node *Element) Ancestors() (res []*Element) {
 	return res
 }
 
-// AddAttr adds a new attribute to this node.
-// No checks are done to exclude duplicates to redefinition.
-func (node *Element) AddAttr(attr xml.Attr) {
+// AddAttr adds attr to node.
+// Duplicates are ignored. If attr has the same
+// name as a preexisting attribute, then it will replace
+// the preexsting attribute.
+// Return is node.
+func (node *Element) AddAttr(attr xml.Attr) *Element {
+	for _, a := range node.Attributes {
+		if a == attr {
+			return node
+		}
+		if a.Name == attr.Name {
+			a.Value = attr.Value
+			return node
+		}
+	}
 	node.Attributes = append(node.Attributes, attr)
+	return node
 }
 
-// SetParent sets the new parent node for this node.
+// Attr creates a new xml.Attr and adds it to node.  It is equivalent to:
+//    node.AddAttr(xml.Attr{
+//        Name: xml.Name{
+//            Space: space,
+//            Local: name,
+//        },
+//        Value: value,
+//    })
+func (node *Element) Attr(name, space, value string) *Element {
+	return node.AddAttr(Attr(name, space, value))
+}
+
+// SetParent makes parent the new parent of node, and returns node.
 func (node *Element) SetParent(parent *Element) *Element {
 	parent.AddChild(node)
 	return node
@@ -165,7 +210,8 @@ func namespacedName(e *Encoder, name xml.Name) string {
 	return prefix + ":" + name.Local
 }
 
-// Encode encodes an element using the passed-in Encoder.
+// Encode encodes an element using the passed-in Encoder. If an error occurs
+// during encoding, that error is returned.
 func (node *Element) Encode(e *Encoder) (err error) {
 	// This could use some refactoring. but it works Well Enough(tm)
 	writeNamespaces := !e.started
