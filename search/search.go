@@ -1,4 +1,5 @@
 // Package search contains searching routines for the simplexml/dom package.
+// For some basic usage exmaples, see search_test.go
 package search
 
 import (
