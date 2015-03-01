@@ -3,8 +3,11 @@ package dom
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"io"
 )
+
+const TooManyRootElements = "More than one root Element not allowed!"
 
 func parseElement(decoder *xml.Decoder, tok xml.StartElement) (res *Element, err error) {
 	res = CreateElement(tok.Name)
@@ -35,31 +38,48 @@ func parseElement(decoder *xml.Decoder, tok xml.StartElement) (res *Element, err
 	}
 }
 
-// Parse parses the XML document from the passed io.Reader and
-// returns either a Document or an error if the io.Reader stream
-// could not be parsed as well-formed XML.
-func Parse(r io.Reader) (doc *Document, err error) {
-	doc = CreateDocument()
+// ParseElements parses the XML elements in the passed io.Reader
+// and returns an array of parsed Elements and an error.  If error
+// is not nil, then all the elements in the Reader were parsed
+// corrently.
+func ParseElements(r io.Reader) (elements []*Element, err error) {
 	decoder := xml.NewDecoder(r)
 	decoder.Strict = true
-	var tok xml.Token
+	elements = []*Element{}
 	for {
-		tok, err = decoder.Token()
+		tok, err := decoder.Token()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return elements, err
 		}
 		switch rt := tok.(type) {
 		case xml.StartElement:
-			root, err := parseElement(decoder, rt)
+			element, err := parseElement(decoder, rt)
 			if err != nil {
-				return nil, err
+				return elements, err
 			}
-			doc.SetRoot(root)
-			return doc, nil
+			elements = append(elements, element)
 		}
+	}
+	return elements, nil
+}
+
+// Parse parses the XML document from the passed io.Reader and
+// returns either a Document or an error if the io.Reader stream
+// could not be parsed as a well-formed XML document.
+func Parse(r io.Reader) (doc *Document, err error) {
+	elements, err := ParseElements(r)
+	if err != nil {
+		return nil, err
+	}
+	if len(elements) > 1 {
+		return nil, errors.New(TooManyRootElements)
+	}
+	doc = CreateDocument()
+	if len(elements) == 1 {
+		doc.SetRoot(elements[0])
 	}
 	return doc, nil
 }
