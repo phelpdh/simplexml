@@ -1,12 +1,22 @@
-// Package dom implements a simple XML DOM that
-// is a light wrapper on top of encoding/xml
+// Package dom implements a simple XML DOM that is a light wrapper on top of
+// encoding/xml.  It is oriented towards processing XML used as an RPC
+// encoding mechanism (XMLRPC, SOAP, etc.), and not for general XML document
+// processing.  Specifically:
+//
+// 1. We ignore comments and document processing directives.  They are stripped
+// out as part of document processing.
+//
+// 2. We do not have seperate Text fields.  Instead, each Element has a single
+// Contents field which holds the contents of the last enclosed text in a tag.
+//
 package dom
 
 import (
 	"bytes"
 )
 
-// A Document represents an entire XML document.
+// A Document represents an entire XML document.  Documents hold the root
+// Element.
 type Document struct {
 	root *Element
 }
@@ -43,8 +53,8 @@ func (doc *Document) Encode(e *Encoder) (err error) {
 	return nil
 }
 
-// Bytes returns the results of running Encoder against a byte array, which
-// contains a well-formed XML document.
+// Bytes encodes a Document into a byte array.  The document will be
+// pretty-printed.
 func (doc *Document) Bytes() []byte {
 	b := bytes.Buffer{}
 	encoder := NewEncoder(&b)
