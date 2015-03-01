@@ -87,22 +87,3 @@ func (e *Encoder) spaces() error {
 	}
 	return nil
 }
-
-//SeedNamespaces seeds an Encoder with your preferred namespace prefix mappings.
-// It should be passed in a map of namespace URL -> prefix
-func (e *Encoder) SeedNamespaces(ns map[string]string) {
-	if e.started {
-		log.Panic("xml: Encoding has started, cannot seed namespaces")
-	}
-	for k, v := range ns {
-		if _, err := url.Parse(v); err != nil {
-			log.Panic(err)
-		}
-		if _, found := e.nsURLMap[v]; found {
-			delete(e.nsPrefixMap, e.nsURLMap[v])
-			delete(e.nsURLMap, v)
-		}
-		e.nsPrefixMap[k] = v
-		e.nsURLMap[v] = k
-	}
-}
