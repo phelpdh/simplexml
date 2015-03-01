@@ -54,6 +54,16 @@ func Elem(name, space string) *Element {
 	return CreateElement(xml.Name{Space: space, Local: name})
 }
 
+// ElemC creates a new Element with Content.  It is equivalent to
+// creating a new Element with:
+//    e := Elem(name,space)
+//    e.Content = []byte(content)
+func ElemC(name, space, content string) *Element {
+	res := Elem(name, space)
+	res.Content = []byte(content)
+	return res
+}
+
 // AddChild adds child to node.
 // child will be reparented if needed.
 // The return value is node.
@@ -76,6 +86,17 @@ func (node *Element) AddChildren(children ...*Element) *Element {
 	return node
 }
 
+// Replace performs an in-place replacement of node with other.
+// other should not be used after this functions returns.
+// node will be returned.
+func (node *Element) Replace(other *Element) *Element {
+	node.Name = other.Name
+	node.Content = other.Content
+	node.Attributes = other.Attributes
+	node.children = []*Element{}
+	node.AddChildren(other.children...)
+	return node
+}
 // RemoveChild removes child from node.  The removed child
 // will be returned if it was actually a child of node, otherwise
 // nil will be returned.
