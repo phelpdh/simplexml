@@ -42,9 +42,14 @@ func parseElement(decoder *xml.Decoder, tok xml.StartElement) (res *Element, err
 // and returns an array of parsed Elements and an error.  If error
 // is not nil, then all the elements in the Reader were parsed
 // corrently.
+//
+// This assumes our input is always UTF-8, no matter what lies
+// the <?xml?> header says.
 func ParseElements(r io.Reader) (elements []*Element, err error) {
 	decoder := xml.NewDecoder(r)
 	decoder.Strict = true
+	// Lie like a rug and assume no character set translation is needed.
+	decoder.CharsetReader = func(s string, r io.Reader)(io.Reader,error){ return r,nil }
 	elements = []*Element{}
 	for {
 		tok, err := decoder.Token()
