@@ -3,6 +3,7 @@
 package search
 
 import (
+	"bytes"
 	"github.com/VictorLowther/simplexml/dom"
 	"regexp"
 )
@@ -89,6 +90,19 @@ func Parent(fn Match) Match {
 			return false
 		}
 		return fn(p)
+	}
+}
+
+// Child returns a matcher that matches iff the element has a
+// child that matches the passed fn.
+func Child(fn Match) Match {
+	return func(e *dom.Element) bool {
+		for _,c := range e.Children() {
+			if fn(c) {
+				return true
+			}
+		}
+		return false
 	}
 }
 
@@ -183,6 +197,14 @@ func AttrRE(name, space, value *regexp.Regexp) Match {
 func ContentExists() Match {
 	return func(e *dom.Element) bool {
 		return len(e.Content) > 0
+	}
+}
+
+// Content creates a Match against an element that tests to see if
+// it matches the supplied content.
+func Content(content []byte) Match {
+	return func(e *dom.Element) bool {
+		return bytes.Equal(e.Content, content)
 	}
 }
 
