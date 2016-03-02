@@ -4,8 +4,9 @@ package search
 
 import (
 	"bytes"
-	"github.com/VictorLowther/simplexml/dom"
 	"regexp"
+
+	"github.com/VictorLowther/simplexml/dom"
 )
 
 // Match is the basic type of a search function.
@@ -97,7 +98,7 @@ func Parent(fn Match) Match {
 // child that matches the passed fn.
 func Child(fn Match) Match {
 	return func(e *dom.Element) bool {
-		for _,c := range e.Children() {
+		for _, c := range e.Children() {
 			if fn(c) {
 				return true
 			}
@@ -149,6 +150,10 @@ func Tag(name, space string) Match {
 		return (space == "*" || space == e.Name.Space) &&
 			(name == "*" || name == e.Name.Local)
 	}
+}
+
+func FirstTag(name, space string, nodes []*dom.Element) *dom.Element {
+	return First(Tag(name, space), nodes)
 }
 
 // TagRE is a helper function for matching against a specific tag
