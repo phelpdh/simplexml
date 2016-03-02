@@ -152,8 +152,18 @@ func Tag(name, space string) Match {
 	}
 }
 
+// FirstTag finds the first element in the set of nodes that matches the tag name and namespace.
 func FirstTag(name, space string, nodes []*dom.Element) *dom.Element {
 	return First(Tag(name, space), nodes)
+}
+
+// MustFirstTag is the same as FirstTag, but it panics if the tag cannot be found
+func MustFirstTag(name, space string, nodes []*dom.Element) *dom.Element {
+	res := FirstTag(name, space, nodes)
+	if res == nil {
+		panic("Failed to find tag " + name + " in namespace " + space)
+	}
+	return res
 }
 
 // TagRE is a helper function for matching against a specific tag
