@@ -2,7 +2,7 @@ package search
 
 import (
 	"encoding/xml"
-	"github.com/VictorLowther/simplexml/dom"
+	"github.com/phelpdh/simplexml/dom"
 	"log"
 	"regexp"
 	"strconv"
