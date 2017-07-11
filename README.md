@@ -10,7 +10,7 @@ element tree.
 
 ## Contact
 
-- Bugs: https://github.com/VictorLowther/simplexml/issues
+- Bugs: https://github.com/phelpdh/simplexml/issues
 
 
 ### Building
@@ -18,7 +18,7 @@ element tree.
 You can build the library from source:
 
 ```sh
-git clone https://github.com/VictorLowther/simplexml
+git clone https://github.com/phelpdh/simplexml
 cd simplexml
 go build
 ```

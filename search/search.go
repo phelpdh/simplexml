@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"regexp"
 
-	"github.com/VictorLowther/simplexml/dom"
+	"github.com/phelpdh/simplexml/dom"
 )
 
 // Match is the basic type of a search function.
